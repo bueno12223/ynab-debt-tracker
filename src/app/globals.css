@@ -24,3 +24,85 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom Calendar Styles */
+.calendar-container .react-calendar {
+  background: #374151;
+  border: 1px solid #4B5563;
+  border-radius: 0.5rem;
+  color: #F3F4F6;
+  font-family: inherit;
+  width: 100%;
+}
+
+.calendar-container .react-calendar__navigation {
+  background: #4B5563;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.calendar-container .react-calendar__navigation button {
+  color: #F3F4F6;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.calendar-container .react-calendar__navigation button:hover {
+  background: #6B7280;
+}
+
+.calendar-container .react-calendar__month-view__weekdays {
+  background: #4B5563;
+  color: #9CA3AF;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.calendar-container .react-calendar__month-view__weekdays__weekday {
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.calendar-container .react-calendar__tile {
+  background: #374151;
+  border: 1px solid #4B5563;
+  color: #F3F4F6;
+  padding: 0.75rem 0.5rem;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.calendar-container .react-calendar__tile:hover {
+  background: #4B5563;
+}
+
+.calendar-container .react-calendar__tile--active {
+  background: #3B82F6 !important;
+  color: white;
+}
+
+.calendar-container .react-calendar__tile--now {
+  background: #1F2937;
+  border: 2px solid #3B82F6;
+}
+
+.calendar-container .react-calendar__tile.payment-day {
+  background: #10B981 !important;
+  color: white;
+  font-weight: bold;
+}
+
+.calendar-container .react-calendar__tile.payment-day:hover {
+  background: #059669 !important;
+}
+
+.payment-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.75rem;
+  color: white;
+  font-weight: bold;
+}
