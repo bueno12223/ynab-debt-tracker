@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DollarSign, Info, X, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { getAccountConfig, getBudgets, getAccount, getTransactions, milliunitsToCurrency, createTransaction, createTransferTransaction, calculatePaymentDaysRemaining, getDaysUntilDeadline } from '../lib/ynab';
+import { getAccountConfig, getBudgets, getAccount, getTransactions, milliunitsToCurrency, createTransaction, createTransferTransaction, calculatePaymentDaysRemaining, getDaysUntilDeadline, type PaymentHistoryItem, type DeadlineConfig, type PaymentAccounts } from '../lib/ynab';
 import dayjs from 'dayjs';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -17,6 +17,11 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+}
+
+interface CalendarTileProps {
+  date: Date;
+  view: string;
 }
 // --- Componente Modal Genérico ---
 const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
@@ -38,33 +43,33 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
   );
 };
 
-// --- Componente Principal de la App ---
-const App = () => {
+// --- Componente que maneja los search params ---
+const AppWithParams = () => {
   const searchParams = useSearchParams();
   const accountKey = searchParams.get('account') || 'taxi-soluto';
+
+  return <DebtTrackerApp accountKey={accountKey} />;
+};
+
+// --- Componente Principal de la App ---
+const DebtTrackerApp = ({ accountKey }: { accountKey: string }) => {
 
   // --- Estado de la Aplicación ---
   const [accountName, setAccountName] = useState("Préstamo Personal");
   const [accountBalance, setAccountBalance] = useState(0); // This is the total debt from YNAB
   const [presetPaymentAmount, setPresetPaymentAmount] = useState(150.00);
   const [maxDailyPayment, setMaxDailyPayment] = useState(200.00);
-  const [paymentDays, setPaymentDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [paymentDays, setPaymentDays] = useState<readonly number[]>([1, 2, 3, 4, 5, 6]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [budgetId, setBudgetId] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
-  const [deadlineConfig, setDeadlineConfig] = useState<any>(null);
+  const [deadlineConfig, setDeadlineConfig] = useState<DeadlineConfig | null>(null);
   const [paymentDaysRemaining, setPaymentDaysRemaining] = useState<number>(0);
   const [totalDaysUntilDeadline, setTotalDaysUntilDeadline] = useState<number>(0);
-  const [paymentAccounts, setPaymentAccounts] = useState<{[key: string]: string}>({});
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccounts>({});
 
-  const [paymentHistory, setPaymentHistory] = useState<Array<{
-    date: string,
-    amount: number,
-    balance: number,
-    cleared?: string,
-    memo?: string
-  }>>([]);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
 
   // Load account configuration and YNAB data
   useEffect(() => {
@@ -120,13 +125,13 @@ const App = () => {
         setPaymentHistory(paymentTransactions);
 
         // Set deadline configuration if available
-        if (accountConfig.deadlineConfig) {
+        if ('deadlineConfig' in accountConfig && accountConfig.deadlineConfig) {
           setDeadlineConfig(accountConfig.deadlineConfig);
 
           // Calculate payment days remaining
           const daysRemaining = calculatePaymentDaysRemaining(
             accountConfig.deadlineConfig.endDate,
-            accountConfig.constants.paymentDays,
+            accountConfig.constants.paymentDays.slice(),
             paymentTransactions
           );
           setPaymentDaysRemaining(daysRemaining);
@@ -179,7 +184,7 @@ const App = () => {
     const todayString = today.format('YYYY-MM-DD');
 
     // Check if today is a payment day
-    const isPaymentDay = paymentDays.includes(dayOfWeek);
+    const isPaymentDay = (paymentDays as number[]).includes(dayOfWeek);
 
     // Check if user made a payment today
     const madePaymentToday = paymentHistory.some(payment => payment.date === todayString && payment.amount >= 0);
@@ -233,11 +238,11 @@ const App = () => {
       const paymentAccountId = paymentAccounts[method];
 
       if (paymentAccountId) {
-        // Create transfer transaction from payment account to debt account
+        // Create transfer transaction from debt account to payment account
         await createTransferTransaction(
           budgetId,
-          paymentAccountId,
           accountId,
+          paymentAccountId,
           presetPaymentAmount,
           `Pago de deuda vía ${method}`
         );
@@ -553,13 +558,13 @@ const App = () => {
               <div className="calendar-container">
                 <Calendar
                   value={new Date()}
-                  tileClassName={({ date, view }) => {
+                  tileClassName={({ date, view }: CalendarTileProps) => {
                     if (view === 'month' && hasPaymentOnDate(date)) {
                       return 'payment-day';
                     }
                     return null;
                   }}
-                  tileContent={({ date, view }) => {
+                  tileContent={({ date, view }: CalendarTileProps) => {
                     if (view === 'month' && hasPaymentOnDate(date)) {
                       return <div className="payment-indicator">✓</div>;
                     }
@@ -613,6 +618,22 @@ const App = () => {
         </div>
       </Modal>
     </div>
+  );
+};
+
+// --- Componente principal con Suspense ---
+const App = () => {
+  return (
+    <Suspense fallback={
+      <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center font-sans p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-300">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AppWithParams />
+    </Suspense>
   );
 };
 

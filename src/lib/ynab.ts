@@ -1,6 +1,41 @@
 import * as ynab from 'ynab';
 import dayjs from 'dayjs';
 
+// TypeScript interfaces
+export interface PaymentConstants {
+  paymentQuantity: number;
+  maxDailyPayment: number;
+  minDailyPayment: number;
+  paymentDays: readonly number[];
+}
+
+export interface DeadlineConfig {
+  enabled: boolean;
+  endDate: string;
+  showDaysRemaining: boolean;
+  description: string;
+}
+
+export interface PaymentAccounts {
+  [key: string]: string;
+}
+
+export interface AccountConfig {
+  accountId: string;
+  name: string;
+  constants: PaymentConstants;
+  deadlineConfig?: DeadlineConfig;
+  paymentAccounts?: PaymentAccounts;
+}
+
+export interface PaymentHistoryItem {
+  date: string;
+  amount: number;
+  balance: number;
+  cleared?: string;
+  memo?: string;
+}
+
 // YNAB API client
 export const ynabAPI = new ynab.API(process.env.NEXT_PUBLIC_YNAB_ACCESS_TOKEN || '');
 
@@ -10,7 +45,7 @@ const paymentAccounts = {
     }
 
 // Account configuration mapping
-export const ACCOUNT_CONFIG = {
+export const ACCOUNT_CONFIG: Record<string, AccountConfig> = {
   // Example account configurations - replace with actual account IDs from YNAB
   'taxi': {
     accountId: '65dd34f4-7de3-45ac-8605-78a8f27de40f',
@@ -74,7 +109,7 @@ export const ACCOUNT_CONFIG = {
 export type AccountKey = keyof typeof ACCOUNT_CONFIG;
 
 // Helper function to get account config from URL parameter
-export function getAccountConfig(accountKey: string): typeof ACCOUNT_CONFIG[AccountKey] | null {
+export function getAccountConfig(accountKey: string): AccountConfig | null {
   if (accountKey in ACCOUNT_CONFIG) {
     return ACCOUNT_CONFIG[accountKey as AccountKey];
   }
@@ -129,8 +164,8 @@ export function currencyToMilliunits(amount: number): number {
 // Helper function to calculate payment days remaining until deadline
 export function calculatePaymentDaysRemaining(
   endDate: string,
-  paymentDays: number[],
-  paymentHistory: Array<{date: string, amount: number}>
+  paymentDays: readonly number[],
+  paymentHistory: PaymentHistoryItem[]
 ): number {
   const today = dayjs();
   const deadline = dayjs(endDate);
